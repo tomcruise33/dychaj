@@ -33,11 +33,31 @@ export const EXERCISES = {
       { kind: 'exhale', ms: o.outSec * 1000 },
     ],
   },
+  clear: {
+    id: 'clear',
+    // Deep breaths, a huff and a supported cough (Guy's and St Thomas' NHS).
+    defaults: { rounds: 2, breaths: 3, inSec: 3, holdSec: 2, outSec: 4 },
+    round: (o) => {
+      const out = [];
+      for (let i = 0; i < o.breaths; i++) {
+        out.push({ kind: 'inhale', ms: o.inSec * 1000, step: 'in' });
+        out.push({ kind: 'holdIn', ms: o.holdSec * 1000, step: 'hold' });
+        out.push({ kind: 'exhale', ms: o.outSec * 1000, step: 'out' });
+      }
+      out.push({ kind: 'inhale', ms: 2000, step: 'preHuff' });
+      out.push({ kind: 'huff', ms: 1500, step: 'huff' });
+      out.push({ kind: 'rest', ms: 3000, step: 'rest' });
+      out.push({ kind: 'inhale', ms: 2500, step: 'preCough' });
+      out.push({ kind: 'cough', ms: 1500, step: 'cough' });
+      out.push({ kind: 'rest', ms: 5000, step: 'rest' });
+      return out;
+    },
+  },
   spirometer: {
     id: 'spirometer',
     icon: '⦿',
     // Slow sustained maximal inspiration with hold, 10 reps per set.
-    defaults: { reps: 10, prepSec: 3, inSec: 4, holdSec: 3, outSec: 4, restSec: 6, targetBall: 2 },
+    defaults: { reps: 5, prepSec: 3, inSec: 4, holdSec: 3, outSec: 4, restSec: 6, targetBall: 2 },
     rep: (o) => [
       { kind: 'prep', ms: o.prepSec * 1000 },
       { kind: 'inhale', ms: o.inSec * 1000 },
@@ -57,6 +77,11 @@ export function cycleMs(phases) {
 export function buildSession(exId, opts) {
   const ex = EXERCISES[exId];
   const o = { ...ex.defaults, ...opts };
+  if (exId === 'clear') {
+    const out = [];
+    for (let r = 0; r < o.rounds; r++) for (const p of ex.round(o)) out.push({ ...p, rep: r + 1 });
+    return out;
+  }
   if (exId === 'spirometer') {
     const out = [];
     for (let r = 0; r < o.reps; r++) {

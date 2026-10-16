@@ -10,8 +10,8 @@ const dayStart = (d) => {
 export function plannedPerDay(state) {
   const slots = computeSlots(state);
   return {
-    spiro: slots.filter((s) => s.type === 'spirometer').length,
-    breath: slots.filter((s) => s.type === 'breath').length,
+    spiro: slots.filter((s) => s.spiro).length,
+    breath: slots.reduce((n, s) => n + s.exercises.length, 0),
   };
 }
 

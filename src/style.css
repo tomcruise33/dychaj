@@ -387,3 +387,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .done-prog { font-size: 1.05rem; }
 .done-prog b { font-size: 1.5rem; color: var(--accent); }
 .btn:disabled { opacity: 0.6; }
+
+.quick { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 560px) { .quick { grid-template-columns: repeat(4, 1fr); } }
+.quick-item { flex-direction: row; justify-content: flex-start; padding: 14px 12px; text-align: left; }
+.quick-item .q-name { margin: 0 0 0 10px; text-align: left; }
+.q-clear .q-icon, .ex-clear .ex-icon { color: var(--teal); }
+.ex-clear .ex-icon { background: var(--teal-soft); }
+.then-line { font-size: 0.85rem; margin-top: 4px !important; color: var(--teal) !important; font-weight: 650; }
+.session[data-phase="huff"] .phase-label, .session[data-phase="cough"] .phase-label { color: var(--accent); }

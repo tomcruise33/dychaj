@@ -14,24 +14,48 @@ const toMin = (hhmm) => {
 };
 const fmt = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
-// Returns daily slots: [{ key, type, exercise?, hour, minute }]
+// Returns merged daily slots, one per clock time:
+//   { key, hour, minute, spiro: bool, exercises: [ids], type, exercise, route }
+// A breathing exercise that falls on a spirometer time joins that slot, so the
+// phone gets one notification instead of two.
 export function computeSlots(state) {
-  const slots = [];
+  const byMin = new Map();
+  const get = (m) => {
+    if (!byMin.has(m)) byMin.set(m, { key: `slot-${fmt(m)}`, hour: Math.floor(m / 60), minute: m % 60, spiro: false, exercises: [] });
+    return byMin.get(m);
+  };
   const r = state.spiro.reminder;
   if (r.enabled && r.everyMin >= 15) {
     const a = toMin(r.start);
     const b = toMin(r.end);
-    for (let m = a; m <= b; m += r.everyMin) {
-      slots.push({ key: `spiro-${fmt(m)}`, type: 'spirometer', hour: Math.floor(m / 60), minute: m % 60 });
-    }
+    for (let m = a; m <= b; m += r.everyMin) get(m).spiro = true;
   }
   for (const br of state.breathReminders) {
     if (!br.enabled) continue;
-    const m = toMin(br.time);
-    slots.push({ key: `breath-${br.id}`, type: 'breath', exercise: br.exercise, hour: Math.floor(m / 60), minute: m % 60 });
+    const slot = get(toMin(br.time));
+    if (!slot.exercises.includes(br.exercise)) slot.exercises.push(br.exercise);
   }
-  slots.sort((x, y) => x.hour * 60 + x.minute - (y.hour * 60 + y.minute));
+  const slots = [...byMin.keys()].sort((x, y) => x - y).map((m) => {
+    const s = byMin.get(m);
+    s.type = s.spiro ? 'spirometer' : 'breath';
+    s.exercise = s.exercises[0];
+    s.route = s.spiro ? (s.exercise ? `spirometer/${s.exercise}` : 'spirometer') : `breathe/${s.exercise}`;
+    return s;
+  });
   return slots.slice(0, IOS_PENDING_LIMIT);
+}
+
+// Notification text for a slot.
+export function slotMessage(slot, state, t) {
+  const names = slot.exercises.map((e) => t(`ex.${e}.name`));
+  if (slot.spiro) {
+    const body = t('notif.spiroBody', { reps: state.spiro.reps });
+    return {
+      title: names.length ? `${t('notif.spiroTitle')} + ${names.join(', ')}` : t('notif.spiroTitle'),
+      body,
+    };
+  }
+  return { title: t('notif.breathTitle', { name: names.join(', ') }), body: t(`notif.body.${slot.exercise}`) };
 }
 
 export function nextSlot(state, now = new Date()) {
@@ -94,13 +118,10 @@ export async function syncNativeReminders(state, t) {
   const slots = computeSlots(state);
   const notifications = slots.map((s) => ({
     id: slotId(s.key),
-    title: s.type === 'spirometer' ? t('notif.spiroTitle') : t('notif.breathTitle', { name: t(`ex.${s.exercise}.name`) }),
-    body: s.type === 'spirometer'
-      ? t('notif.spiroBody', { reps: state.spiro.reps })
-      : t('notif.breathBody'),
+    ...slotMessage(s, state, t),
     channelId: 'reminders',
     schedule: { on: { hour: s.hour, minute: s.minute }, allowWhileIdle: true },
-    extra: { route: s.type === 'spirometer' ? 'spirometer' : `breathe/${s.exercise}` },
+    extra: { route: s.route },
   }));
   if (notifications.length) await LocalNotifications.schedule({ notifications });
   // Report what the OS actually holds, not what we asked for.
@@ -129,13 +150,12 @@ export function startWebReminderLoop(getState, t, onDue) {
     const slot = computeSlots(getState()).find((s) => s.hour === now.getHours() && s.minute === now.getMinutes());
     if (!slot) return;
     lastFired = key;
-    const title = slot.type === 'spirometer' ? t('notif.spiroTitle') : t('notif.breathTitle', { name: t(`ex.${slot.exercise}.name`) });
-    const body = slot.type === 'spirometer' ? t('notif.spiroBody', { reps: getState().spiro.reps }) : t('notif.breathBody');
+    const { title, body } = slotMessage(slot, getState(), t);
     onDue(slot, title, body);
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
         const reg = await navigator.serviceWorker?.getRegistration();
-        const data = { route: slot.type === 'spirometer' ? 'spirometer' : `breathe/${slot.exercise}` };
+        const data = { route: slot.route };
         if (reg) reg.showNotification(title, { body, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', tag: slot.key, data, vibrate: [200, 100, 200] });
         else new Notification(title, { body });
       } catch { /* ignore */ }
@@ -175,9 +195,8 @@ export function buildIcs(state, t, start = new Date()) {
     `X-WR-CALNAME:${icsEscape(t('app.name'))}`,
   ];
   for (const s of slots) {
-    const title = s.type === 'spirometer' ? t('notif.spiroTitle') : t('notif.breathTitle', { name: t(`ex.${s.exercise}.name`) });
-    const body = s.type === 'spirometer' ? t('notif.spiroBody', { reps: state.spiro.reps }) : t('notif.breathBody');
-    const dur = s.type === 'spirometer' ? 'PT5M' : 'PT10M';
+    const { title, body } = slotMessage(s, state, t);
+    const dur = s.exercises.length ? 'PT10M' : 'PT3M';
     lines.push(
       'BEGIN:VEVENT',
       `UID:${s.key}@dychaj.app`,

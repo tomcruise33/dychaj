@@ -79,10 +79,16 @@ test('spirometer set has N reps with hold', () => {
   assert.ok(s.filter((p) => p.kind === 'holdIn').every((p) => p.ms >= 3000));
 });
 
-test('default reminder slots: hourly spirometer 08-21 + 3 coherence', () => {
+test('default daily plan: spirometer every 15 min 08:00-21:45, exercises merged into those slots', () => {
   const slots = computeSlots(DEFAULT_STATE);
-  assert.equal(slots.filter((s) => s.type === 'spirometer').length, 14);
-  assert.equal(slots.filter((s) => s.type === 'breath').length, 3);
+  assert.equal(slots.length, 56);
+  assert.ok(slots.every((s) => s.spiro));
+  const ex = slots.filter((s) => s.exercises.length);
+  assert.equal(ex.length, 9);
+  assert.equal(ex.filter((s) => s.exercises.includes('coherence')).length, 3);
+  assert.equal(ex.filter((s) => s.exercises.includes('clear')).length, 4);
+  assert.equal(slots.find((s) => s.key === 'slot-09:00').route, 'spirometer/coherence');
+  assert.equal(DEFAULT_STATE.spiro.reps, 5);
   assert.ok(slots.length <= 64);
   const ids = new Set(slots.map((s) => slotId(s.key)));
   assert.equal(ids.size, slots.length, 'notification ids are unique');
@@ -104,9 +110,9 @@ test('nextSlot rolls over to tomorrow', () => {
 test('ics has one daily event with an alarm per slot', () => {
   const t = (k, v) => (v ? `${k}:${JSON.stringify(v)}` : k);
   const ics = buildIcs(DEFAULT_STATE, t, new Date(2026, 9, 16));
-  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 17);
-  assert.equal((ics.match(/RRULE:FREQ=DAILY/g) || []).length, 17);
-  assert.equal((ics.match(/BEGIN:VALARM/g) || []).length, 17);
+  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 56);
+  assert.equal((ics.match(/RRULE:FREQ=DAILY/g) || []).length, 56);
+  assert.equal((ics.match(/BEGIN:VALARM/g) || []).length, 56);
   assert.ok(ics.includes('DTSTART:20261016T080000'));
   assert.ok(ics.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 75));
 });
@@ -131,9 +137,29 @@ test('progress: today and week stats', async () => {
     { ts: at(15, 10), type: 'spirometer', reps: 8, seconds: 150 },
   ];
   const d = dayStats(st, now);
-  assert.deepEqual([d.spiroDone, d.spiroPlanned, d.breathDone, d.breathPlanned, d.bestBall], [2, 14, 1, 3, 3]);
+  assert.deepEqual([d.spiroDone, d.spiroPlanned, d.breathDone, d.breathPlanned, d.bestBall], [2, 56, 1, 9, 3]);
   const w = week(st, now);
   assert.equal(w.length, 7);
   assert.ok(w[6].isToday && w[6].done === 2 && w[5].done === 1 && w[0].done === 0);
   assert.equal(totals(st).breaths, 28);
+});
+
+test('clear exercise: breaths, huff and cough each round', () => {
+  const s = buildSession('clear', { rounds: 2, breaths: 3 });
+  assert.equal(s.filter((p) => p.kind === 'huff').length, 2);
+  assert.equal(s.filter((p) => p.kind === 'cough').length, 2);
+  assert.equal(s.filter((p) => p.step === 'in').length, 6);
+  const huff = phaseEnvelope('huff', 1500);
+  assert.ok(huff[0].a > 0.9 && huff.at(-1).a < 0.05);
+});
+
+test('older installs get the daily plan once, history kept', async () => {
+  const saved = { onboarded: true, spiro: { reps: 10, reminder: { enabled: true, start: '08:00', end: '21:00', everyMin: 60 } }, log: [{ ts: 1, type: 'spirometer' }] };
+  globalThis.localStorage = { getItem: () => JSON.stringify(saved), setItem() {} };
+  const m = await import('../src/store.js?migrate');
+  const st = m.getState();
+  assert.equal(st.spiro.reps, 5);
+  assert.equal(st.spiro.reminder.everyMin, 15);
+  assert.equal(st.planVersion, 2);
+  assert.equal(st.log.length, 1);
 });

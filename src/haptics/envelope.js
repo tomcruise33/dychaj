@@ -65,6 +65,20 @@ export function phaseEnvelope(kind, durationMs, opts = {}) {
         s = 0.42 - 0.32 * x;
         break;
       }
+      case 'huff': {
+        // One strong, fast-draining push of air.
+        a = 1 - easeOutCubic(Math.min(1, x * 1.6));
+        s = 0.8;
+        break;
+      }
+      case 'cough': {
+        // Two firm taps, like two short coughs.
+        const p2 = t % 700;
+        a = p2 < 130 ? 1 : p2 < 220 ? 0.15 : 0;
+        if (t > 1300) a = 0;
+        s = 0.9;
+        break;
+      }
       case 'holdOut': {
         a = pulse ? heartbeat(t, 0.0, 0.14) : 0;
         s = 0.12;

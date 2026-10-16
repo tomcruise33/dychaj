@@ -1,7 +1,7 @@
 import './style.css';
 import { Capacitor } from '@capacitor/core';
 import { t, setLang, getLang, detectLang, LANG_NAMES } from './i18n.js';
-import { getState, update, addLog, todayLog, streakDays } from './store.js';
+import { getState, update, addLog, todayLog, streakDays, applyDailyPlan } from './store.js';
 import { EXERCISES, buildSession, TRIFLO_BALLS } from './exercises.js';
 import { Session } from './session.js';
 import { detectHaptics, playPhase, hapticsMode, tap } from './haptics/index.js';
@@ -60,7 +60,7 @@ function render() {
   const st = getState();
   let body = '';
   if (view === 'breathe' && arg) return renderSession(arg);
-  if (view === 'spirometer') return renderSession('spirometer');
+  if (view === 'spirometer') return renderSession('spirometer', arg);
   if (view === 'breathe') body = viewBreathe();
   else if (view === 'plan') body = viewPlan(st);
   else if (view === 'settings') body = viewSettings(st);
@@ -134,7 +134,7 @@ function toast(msg) {
 
 function showDueBanner(slot, title, body) {
   if (session) return;
-  const r = slot.type === 'spirometer' ? 'spirometer' : `breathe/${slot.exercise}`;
+  const r = slot.route;
   const div = document.createElement('div');
   div.className = 'due-banner';
   div.innerHTML = `<div><strong>${esc(title)}</strong><span>${esc(body)}</span></div><button class="btn primary">${esc(t('session.start'))}</button>`;
@@ -144,6 +144,11 @@ function showDueBanner(slot, title, body) {
 }
 
 // ---------- home ----------
+function slotName(n) {
+  const names = n.exercises.map((e) => t(`ex.${e}.name`));
+  return n.spiro ? [t('ex.spirometer.name'), ...names].join(' + ') : names.join(' + ');
+}
+
 function greeting() {
   const h = new Date().getHours();
   return h < 11 ? t('home.morning') : h < 18 ? t('home.afternoon') : t('home.evening');
@@ -173,9 +178,11 @@ function weekBars(st) {
 
 function viewHome(st) {
   const d = dayStats(st);
-  const left = Math.max(0, d.spiroPlanned - d.spiroDone);
+  // Remaining = reminders still ahead today (missed ones cannot be caught up).
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const left = computeSlots(st).filter((x) => x.spiro && x.hour * 60 + x.minute > nowMin).length;
   const tot = totals(st);
-  const quick = ['coherence', 'box', 'sigh'];
+  const quick = ['clear', 'coherence', 'box', 'sigh'];
   return `
   <header class="hero">
     <h1>${esc(greeting())}</h1>
@@ -197,7 +204,7 @@ function viewHome(st) {
         <span class="side-cap">${esc(t('home.breathSessions'))}</span>
       </div>
     </div>
-    <p class="left-line">${d.spiroPlanned ? (left ? esc(t('home.left', { n: left })) : `<strong>${esc(t('home.allDone'))}</strong>`) : ''}</p>
+    <p class="left-line">${d.spiroPlanned ? (left ? esc(t('home.left', { n: left })) : (d.spiroDone ? `<strong>${esc(t('home.allDone'))}</strong>` : '')) : ''}</p>
     <div class="week">${weekBars(st)}</div>
     <div class="totals">
       <span><b>${streakDays()}</b> ${esc(t('home.streak'))}</span>
@@ -227,13 +234,20 @@ async function hydrateHome() {
     else {
       const mins = Math.max(0, Math.round((n.date - new Date()) / 60000));
       const rel = mins < 60 ? t('home.inMin', { n: mins }) : t('home.inHours', { h: Math.floor(mins / 60), m: mins % 60 });
-      const name = n.type === 'spirometer' ? t('ex.spirometer.name') : t(`ex.${n.exercise}.name`);
-      const r = n.type === 'spirometer' ? 'spirometer' : `breathe/${n.exercise}`;
+      const name = slotName(n);
+      const r = n.route;
       card.innerHTML = `
         <div>
           <p class="eyebrow">${esc(t('home.next'))}</p>
           <h2>${String(n.hour).padStart(2, '0')}:${String(n.minute).padStart(2, '0')} <small>${esc(rel)}</small></h2>
           <p>${esc(name)}</p>
+          ${(() => {
+            const all = computeSlots(st);
+            const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+            const nm = n.hour * 60 + n.minute;
+            const later = all.find((x) => x.exercises.length && x.hour * 60 + x.minute > Math.max(nm, nowMin) && x.key !== n.key);
+            return later ? `<p class="then-line">${esc(t('home.then', { time: `${String(later.hour).padStart(2, '0')}:${String(later.minute).padStart(2, '0')}`, name: later.exercises.map((e) => t(`ex.${e}.name`)).join(', ') }))}</p>` : '';
+          })()}
         </div>
         <button class="btn round" data-go="${r}" aria-label="${esc(t('session.start'))}">${ICONS.play}</button>`;
       card.querySelector('[data-go]').onclick = () => go(r);
@@ -278,14 +292,14 @@ async function hydrateHome() {
 // ---------- breathe list ----------
 function viewBreathe() {
   const st = getState();
-  const items = ['spirometer', 'coherence', 'box', 'sigh'];
+  const items = ['spirometer', 'clear', 'coherence', 'box', 'sigh'];
   return `
   <header class="hero small"><h1>${esc(t('nav.breathe'))}</h1></header>
   <div class="ex-list">
     ${items.map((id) => {
       const r = id === 'spirometer' ? 'spirometer' : `breathe/${id}`;
       const o = id === 'spirometer' ? st.spiro : st.exercises[id];
-      const meta = id === 'spirometer'
+      const meta = id === 'clear' ? `${o.rounds}× · ${o.breaths} + huff` : id === 'spirometer'
         ? `${o.reps}× · ${t('spiro.target', { n: o.targetBall })}`
         : id === 'box' ? `${o.phaseSec}-${o.phaseSec}-${o.phaseSec}-${o.phaseSec} · ${t('session.minutes', { n: o.minutes })}`
           : id === 'coherence' ? `${o.inSec}/${o.outSec} s · ${t('session.minutes', { n: o.minutes })}`
@@ -309,10 +323,11 @@ function fmtTime(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function renderSession(exId) {
+function renderSession(exId, thenEx) {
   if (!EXERCISES[exId]) return go('breathe');
   const st = getState();
   const isSpiro = exId === 'spirometer';
+  const isClear = exId === 'clear';
   const opts = isSpiro ? st.spiro : st.exercises[exId];
   const phases = buildSession(exId, opts);
   const totalReps = phases[phases.length - 1].rep;
@@ -361,7 +376,8 @@ function renderSession(exId) {
   let currentRep = 1;
   const startedAt = Date.now();
 
-  counterEl.textContent = isSpiro ? t('session.rep', { n: 1, total: totalReps }) : t('session.cycle', { n: 1, total: totalReps });
+  const counterText = (n) => (isSpiro ? t('session.rep', { n, total: totalReps }) : isClear ? t('session.round', { n, total: totalReps }) : t('session.cycle', { n, total: totalReps }));
+  counterEl.textContent = counterText(1);
 
   root.querySelectorAll('[data-balls]').forEach((b) => b.addEventListener('click', () => {
     ballsByRep[currentRep] = Number(b.dataset.balls);
@@ -387,9 +403,12 @@ function renderSession(exId) {
           ${(() => { const d = dayStats(getState()); return isSpiro && d.spiroPlanned
             ? `<p class="done-prog"><b>${d.spiroDone}/${d.spiroPlanned}</b> ${esc(t('home.spiroSets'))}</p>`
             : `<p class="done-prog"><b>${d.breathDone}${d.breathPlanned ? '/' + d.breathPlanned : ''}</b> ${esc(t('home.breathSessions'))}</p>`; })()}
-          <button class="btn primary big" data-action="home">${esc(t('nav.home'))}</button>
+          ${thenEx && EXERCISES[thenEx] ? `<button class="btn primary big" data-action="then">${esc(t('session.then', { name: t(`ex.${thenEx}.name`) }))}</button>
+          <button class="btn ghost big" data-action="home">${esc(t('nav.home'))}</button>` : `<button class="btn primary big" data-action="home">${esc(t('nav.home'))}</button>`}
         </div></div>`);
       root.querySelector('[data-action="home"]').onclick = () => go('home');
+      const th = root.querySelector('[data-action="then"]');
+      if (th) th.onclick = () => go(`breathe/${thenEx}`);
     }
   };
 
@@ -399,8 +418,11 @@ function renderSession(exId) {
       currentRep = p.rep;
       root.dataset.phase = p.kind;
       phaseEl.textContent = t(`phase.${p.kind}`);
-      counterEl.textContent = isSpiro ? t('session.rep', { n: p.rep, total: totalReps }) : t('session.cycle', { n: p.rep, total: totalReps });
-      if (isSpiro) {
+      counterEl.textContent = counterText(p.rep);
+      if (isClear) {
+        hintEl.textContent = t(`clear.hint.${p.step}`);
+        if (p.step === 'preHuff' || p.step === 'preCough') phaseEl.textContent = t('phase.inhale');
+      } else if (isSpiro) {
         hintEl.textContent = t(`spiro.hint.${p.kind}`);
         pick.hidden = p.kind !== 'rest';
         if (p.kind === 'rest') root.querySelectorAll('[data-balls]').forEach((x) => x.classList.remove('on'));
@@ -459,15 +481,15 @@ function viewPlan(st) {
   const r = st.spiro.reminder;
   const n = computeSlots(st).length;
   return `
-  <header class="hero small"><h1>${esc(t('nav.plan'))}</h1><p class="muted">${esc(t('plan.perDay', { n }))}</p></header>
+  <header class="hero small"><h1>${esc(t('plan.title'))}</h1><p class="muted">${esc(t('plan.perDay', { n }))}</p></header>
   <section class="card" id="perm-card"></section>
   <section class="card form">
     <h3><span class="mini-balls"><i></i><i></i><i></i></span> ${esc(t('plan.spiro'))}</h3>
     <label class="switch-row"><span>${esc(t('plan.spiroOn'))}</span><input type="checkbox" id="spiro-on" ${r.enabled ? 'checked' : ''}></label>
     <div class="grid3">
-      <label>${esc(t('plan.from'))}<select id="spiro-start">${timeOpts(r.start)}</select></label>
-      <label>${esc(t('plan.to'))}<select id="spiro-end">${timeOpts(r.end)}</select></label>
-      <label>${esc(t('plan.every'))}<select id="spiro-every">${[30, 60, 90, 120, 180, 240].map((m) =>
+      <label>${esc(t('plan.from'))}<select id="spiro-start">${timeOpts(r.start, 15)}</select></label>
+      <label>${esc(t('plan.to'))}<select id="spiro-end">${timeOpts(r.end, 15)}</select></label>
+      <label>${esc(t('plan.every'))}<select id="spiro-every">${[15, 20, 30, 45, 60, 90, 120].map((m) =>
         `<option value="${m}" ${m === r.everyMin ? 'selected' : ''}>${m} ${esc(t('plan.min'))}</option>`).join('')}</select></label>
     </div>
   </section>
@@ -477,7 +499,7 @@ function viewPlan(st) {
       ${st.breathReminders.map((b) => `
       <div class="rem-row" data-id="${b.id}">
         <input type="checkbox" class="rem-on" ${b.enabled ? 'checked' : ''} aria-label="on">
-        <select class="rem-ex">${['coherence', 'box', 'sigh'].map((e) =>
+        <select class="rem-ex">${['clear', 'coherence', 'box', 'sigh'].map((e) =>
           `<option value="${e}" ${e === b.exercise ? 'selected' : ''}>${esc(t(`ex.${e}.short`))}</option>`).join('')}</select>
         <select class="rem-time" aria-label="time">${timeOpts(b.time, 15)}</select>
         <button class="btn ghost icon rem-del" aria-label="${esc(t('plan.remove'))}">${ICONS.close}</button>
@@ -486,6 +508,7 @@ function viewPlan(st) {
     <button class="btn ghost with-ico" id="rem-add">${ICONS.plus} ${esc(t('plan.add'))}</button>
   </section>
   <button class="btn primary big" id="plan-save">${esc(t('plan.save'))}</button>
+  <button class="btn ghost big" id="plan-reset">${esc(t('plan.reset'))}</button>
   ${!isNative() ? `
   <section class="card soft">
     <p>${esc(t('plan.webNote'))}</p>
@@ -578,6 +601,12 @@ function bindPlan() {
       go('home');
     }, 1500);
   };
+  document.getElementById('plan-reset').onclick = () => {
+    if (!confirm(t('plan.resetConfirm'))) return;
+    update((s2) => applyDailyPlan(s2));
+    render();
+    toast(t('plan.resetDone'));
+  };
   document.getElementById('ics-btn')?.addEventListener('click', () => {
     readPlanForm();
     const ics = buildIcs(getState(), t);
@@ -646,6 +675,9 @@ function viewSettings(st) {
     ${num('si-top', t('set.topSec'), e.sigh.topSec, 0.5, 2, 0.5)}
     ${num('si-out', t('set.outSec'), e.sigh.outSec, 4, 10, 0.5)}
     ${num('si-min', t('set.minutes'), e.sigh.minutes, 1, 20)}
+    <h3>${esc(t('ex.clear.name'))}</h3>
+    ${num('cl-rounds', t('set.rounds'), e.clear.rounds, 1, 5)}
+    ${num('cl-breaths', t('set.breaths'), e.clear.breaths, 2, 6)}
   </section>
   <section class="card">
     <h3>${esc(t('set.install'))}</h3>
@@ -680,6 +712,7 @@ function bindSettings() {
       Object.assign(s.exercises.box, { phaseSec: v('bx-phase'), minutes: v('bx-min') });
       Object.assign(s.exercises.coherence, { inSec: v('co-in'), outSec: v('co-out'), minutes: v('co-min') });
       Object.assign(s.exercises.sigh, { inSec: v('si-in'), topSec: v('si-top'), outSec: v('si-out'), minutes: v('si-min') });
+      Object.assign(s.exercises.clear, { rounds: v('cl-rounds'), breaths: v('cl-breaths') });
     });
   };
   app.querySelectorAll('input').forEach((el) => el.addEventListener('change', save));

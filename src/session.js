@@ -11,6 +11,8 @@ const FILL = {
   exhale: (x, from) => from * (1 - (1 - Math.pow(1 - x, 2.2))),
   holdOut: (x, from) => from,
   rest: (x, from) => from * (1 - x) + 0.25 * Math.sin(Math.PI * x * 2) ** 2,
+  huff: (x, from) => from * Math.pow(1 - x, 3),
+  cough: (x, from) => from * (1 - x) * (0.8 + 0.2 * Math.cos(x * 18)),
 };
 
 export class Session {
@@ -61,8 +63,8 @@ export class Session {
       playPhase(kind, p.ms, { intensity: haptics.intensity, heartbeat: haptics.heartbeat });
       playBreathSound(kind, p.ms, sound.volume);
     }
-    if (sound.chime && (kind === 'inhale' || kind === 'exhale' || kind === 'holdIn' || kind === 'holdOut')) {
-      const f = { inhale: 523, holdIn: 659, exhale: 440, holdOut: 392 }[kind];
+    if (sound.chime && (kind === 'inhale' || kind === 'exhale' || kind === 'holdIn' || kind === 'holdOut' || kind === 'huff' || kind === 'cough')) {
+      const f = { inhale: 523, holdIn: 659, exhale: 440, holdOut: 392, huff: 784, cough: 698 }[kind];
       chime(f, sound.volume * 0.6);
     }
   }

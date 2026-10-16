@@ -49,7 +49,7 @@ export function playBreathSound(kind, durationMs, volume = 0.6) {
   const gain = ctx.createGain();
   const pts = phaseEnvelope(kind, durationMs, { heartbeat: false });
   const curve = new Float32Array(pts.length);
-  const isHold = kind === 'holdIn' || kind === 'holdOut';
+  const isHold = kind === 'holdIn' || kind === 'holdOut' || kind === 'cough';
   pts.forEach((p, i) => { curve[i] = (isHold ? 0.08 : p.a) * volume * 0.5; });
   curve[curve.length - 1] = 0;
   gain.gain.setValueAtTime(0, now);

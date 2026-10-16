@@ -36,6 +36,7 @@ if (isNative()) {
 }
 window.addEventListener('hashchange', render);
 render();
+window.__appStarted = true;
 
 function go(route) {
   location.hash = `#/${route}`;

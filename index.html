@@ -18,6 +18,27 @@
 <body>
   <div id="app"></div>
   <noscript>Enable JavaScript to use this app.</noscript>
+  <script>
+    // Plain ES5 on purpose: if the app bundle cannot run on an old WebView,
+    // show the reason instead of a blank white screen.
+    if (typeof window.globalThis === 'undefined') window.globalThis = window;
+    (function () {
+      function show(msg) {
+        if (document.getElementById('boot-error')) return;
+        var d = document.createElement('div');
+        d.id = 'boot-error';
+        d.style.cssText = 'font:15px/1.4 sans-serif;padding:24px;color:#15302f;background:#f4efe7;min-height:100vh;box-sizing:border-box';
+        d.innerHTML = '<h2 style="margin:0 0 12px">D\u00fdchaj</h2><p>Aplik\u00e1cia sa nespustila. / Uygulama ba\u015flat\u0131lamad\u0131.</p>' +
+          '<p>Aktualizuj \u201eAndroid System WebView\u201c a \u201eChrome\u201c v Obchode Play.</p>' +
+          '<pre style="white-space:pre-wrap;font-size:12px;background:#fff;padding:10px;border-radius:8px"></pre>';
+        d.querySelector('pre').textContent = msg + '\n\n' + navigator.userAgent;
+        document.body.appendChild(d);
+      }
+      window.addEventListener('error', function (e) { show('Error: ' + (e.message || e.type) + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : '')); });
+      window.addEventListener('unhandledrejection', function (e) { if (!window.__appStarted) show('Promise: ' + (e.reason && e.reason.message || e.reason)); });
+      setTimeout(function () { if (!window.__appStarted) show('Timeout: app bundle did not start'); }, 6000);
+    })();
+  </script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -33,15 +33,17 @@ function deepMerge(base, over) {
   return over === undefined ? base : over;
 }
 
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
 let state = load();
 const listeners = new Set();
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    return deepMerge(structuredClone(DEFAULT_STATE), raw ? JSON.parse(raw) : {});
+    return deepMerge(clone(DEFAULT_STATE), raw ? JSON.parse(raw) : {});
   } catch {
-    return structuredClone(DEFAULT_STATE);
+    return clone(DEFAULT_STATE);
   }
 }
 

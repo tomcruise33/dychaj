@@ -4,5 +4,6 @@ import { defineConfig } from 'vite';
 // inside the Capacitor WebView.
 export default defineConfig({
   base: './',
-  build: { outDir: 'dist', target: 'es2020' },
+  // Old Android System WebView (Chrome 61+) must still run the app.
+  build: { outDir: 'dist', target: ['es2017', 'chrome61', 'safari13'] },
 });

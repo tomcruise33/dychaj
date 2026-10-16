@@ -118,3 +118,22 @@ test('every language has every key, and no em dashes', () => {
     for (const v of Object.values(dict)) assert.ok(!v.includes('—'), `${code} has em dash: ${v}`);
   }
 });
+
+test('progress: today and week stats', async () => {
+  const { dayStats, week, totals } = await import('../src/progress.js');
+  const st = structuredClone(DEFAULT_STATE);
+  const now = new Date(2026, 9, 16, 15, 0);
+  const at = (d, h) => new Date(2026, 9, d, h, 0).getTime();
+  st.log = [
+    { ts: at(16, 8), type: 'spirometer', reps: 10, maxBall: 2, seconds: 200 },
+    { ts: at(16, 9), type: 'spirometer', reps: 10, maxBall: 3, seconds: 200 },
+    { ts: at(16, 13), type: 'coherence', seconds: 300 },
+    { ts: at(15, 10), type: 'spirometer', reps: 8, seconds: 150 },
+  ];
+  const d = dayStats(st, now);
+  assert.deepEqual([d.spiroDone, d.spiroPlanned, d.breathDone, d.breathPlanned, d.bestBall], [2, 14, 1, 3, 3]);
+  const w = week(st, now);
+  assert.equal(w.length, 7);
+  assert.ok(w[6].isToday && w[6].done === 2 && w[5].done === 1 && w[0].done === 0);
+  assert.equal(totals(st).breaths, 28);
+});

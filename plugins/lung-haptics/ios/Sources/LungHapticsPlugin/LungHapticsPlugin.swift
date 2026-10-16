@@ -16,7 +16,9 @@ public class LungHapticsPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "capabilities", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "play", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tap", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "keepAwake", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "allowSleep", returnType: CAPPluginReturnPromise)
     ]
 
     // Core Haptics allows a limited number of control points per curve,
@@ -146,6 +148,20 @@ public class LungHapticsPlugin: CAPPlugin, CAPBridgedPlugin {
             let gen = UIImpactFeedbackGenerator(style: style)
             gen.prepare()
             gen.impactOccurred()
+            call.resolve()
+        }
+    }
+
+    @objc func keepAwake(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = true
+            call.resolve()
+        }
+    }
+
+    @objc func allowSleep(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = false
             call.resolve()
         }
     }

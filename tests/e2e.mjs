@@ -74,6 +74,15 @@ async function run(label, device, lang, scheme) {
   const ics = (await import('node:fs')).readFileSync(path, 'utf8');
   check(`${label}: ics export downloads with alarms`, ics.includes('BEGIN:VALARM') && ics.includes('RRULE:FREQ=DAILY'), dl.suggestedFilename());
 
+  // Save gives visible feedback and lands on home with a confirmation.
+  await page.goto(`${base}#/plan`);
+  await page.click('#plan-save');
+  await page.waitForSelector('.saved-overlay', { timeout: 3000 });
+  await page.screenshot({ path: `${out}/${label}-6b-saved.png` });
+  await page.waitForSelector('.saved-banner', { timeout: 4000 });
+  check(`${label}: save shows confirmation then home`, await page.isVisible('.view-home'));
+  await page.screenshot({ path: `${out}/${label}-6c-home-saved.png` });
+
   await page.goto(`${base}#/settings`);
   await page.waitForSelector('.mode');
   const mode = await page.textContent('.mode');

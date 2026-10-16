@@ -4,9 +4,10 @@ import { t, setLang, getLang, detectLang, LANG_NAMES } from './i18n.js';
 import { getState, update, addLog, todayLog, streakDays } from './store.js';
 import { EXERCISES, buildSession, TRIFLO_BALLS } from './exercises.js';
 import { Session } from './session.js';
-import { detectHaptics, playPhase, hapticsMode } from './haptics/index.js';
+import { detectHaptics, playPhase, hapticsMode, tap } from './haptics/index.js';
 import { unlockAudio, playBreathSound } from './audio.js';
 import { ICONS } from './icons.js';
+import { dayStats, week, totals } from './progress.js';
 import { lungsSvg, trifloSvg, setLungs, setTriflo } from './visuals.js';
 import {
   computeSlots, nextSlot, isNative, notificationPermission, requestNotificationPermission,
@@ -148,40 +149,73 @@ function greeting() {
   return h < 11 ? t('home.morning') : h < 18 ? t('home.afternoon') : t('home.evening');
 }
 
+function ring(done, planned, size, cls) {
+  const r = size / 2 - 7;
+  const c = 2 * Math.PI * r;
+  const pct = planned ? Math.min(1, done / planned) : (done ? 1 : 0);
+  return `<svg class="ring ${cls}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true">
+    <circle class="ring-bg" cx="${size / 2}" cy="${size / 2}" r="${r}"/>
+    <circle class="ring-fg" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - pct)).toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>
+  </svg>`;
+}
+
+function weekBars(st) {
+  const lang = getLang() === 'sk' ? 'sk-SK' : getLang() === 'tr' ? 'tr-TR' : 'en-GB';
+  return week(st).map((d) => {
+    let letter = '';
+    try { letter = d.date.toLocaleDateString(lang, { weekday: 'narrow' }); } catch { letter = String(d.date.getDate()); }
+    return `<div class="wk ${d.isToday ? 'today' : ''} ${d.pct >= 1 ? 'full' : ''}">
+      <div class="wk-bar"><i style="height:${Math.max(d.done ? 8 : 0, Math.round(d.pct * 100))}%"></i></div>
+      <span>${esc(letter)}</span>
+    </div>`;
+  }).join('');
+}
+
 function viewHome(st) {
-  const spiroToday = todayLog('spirometer').length;
-  const spiroPlanned = computeSlots(st).filter((s) => s.type === 'spirometer').length;
-  const breathToday = todayLog().filter((e) => e.type !== 'spirometer').length;
-  const best = Math.max(0, ...todayLog('spirometer').map((e) => e.maxBall || 0));
+  const d = dayStats(st);
+  const left = Math.max(0, d.spiroPlanned - d.spiroDone);
+  const tot = totals(st);
   const quick = ['coherence', 'box', 'sigh'];
   return `
   <header class="hero">
-    <p class="eyebrow">${esc(t('app.tagline'))}</p>
     <h1>${esc(greeting())}</h1>
   </header>
+  <div id="saved-slot"></div>
   <div id="banners"></div>
   <section class="card next" id="next-card"></section>
-  <section class="card stats">
-    <h3>${esc(t('home.today'))}</h3>
-    <div class="stat-row">
-      <div class="stat"><b>${spiroToday}${spiroPlanned ? `<small>/${spiroPlanned}</small>` : ''}</b><span>${esc(t('home.spiroSets'))}</span></div>
-      <div class="stat"><b>${breathToday}</b><span>${esc(t('home.breathSessions'))}</span></div>
-      <div class="stat"><b>${streakDays()}</b><span>${esc(t('home.streak'))}</span></div>
+  <section class="card progress-card">
+    <div class="rings">
+      <div class="ring-box big">
+        ${ring(d.spiroDone, d.spiroPlanned, 132, 'spiro')}
+        <div class="ring-label"><b>${d.spiroDone}${d.spiroPlanned ? `<small>/${d.spiroPlanned}</small>` : ''}</b><span>${esc(t('home.spiroSets'))}</span></div>
+      </div>
+      <div class="ring-side">
+        <div class="ring-box small">
+          ${ring(d.breathDone, d.breathPlanned, 76, 'breath')}
+          <div class="ring-label"><b>${d.breathDone}${d.breathPlanned ? `<small>/${d.breathPlanned}</small>` : ''}</b></div>
+        </div>
+        <span class="side-cap">${esc(t('home.breathSessions'))}</span>
+      </div>
     </div>
-    ${spiroPlanned ? `<div class="meter"><i style="width:${Math.min(100, (spiroToday / spiroPlanned) * 100)}%"></i></div>` : ''}
-    ${best ? `<p class="fine">${esc(t('spiro.best', { n: best }))}</p>` : ''}
+    <p class="left-line">${d.spiroPlanned ? (left ? esc(t('home.left', { n: left })) : `<strong>${esc(t('home.allDone'))}</strong>`) : ''}</p>
+    <div class="week">${weekBars(st)}</div>
+    <div class="totals">
+      <span><b>${streakDays()}</b> ${esc(t('home.streak'))}</span>
+      <span><b>${tot.breaths}</b> ${esc(t('home.totalBreaths'))}</span>
+      ${d.bestBall ? `<span><b>${d.bestBall}</b> ${esc(t('home.bestBalls'))}</span>` : ''}
+    </div>
   </section>
   <button class="btn primary big spiro-cta" data-go="spirometer">
     <span class="mini-balls"><i></i><i></i><i></i></span>${esc(t('home.startSpiro'))}
   </button>
-  <h3 class="section-title">${esc(t('home.quick'))}</h3>
   <div class="quick">
     ${quick.map((id) => `
       <button class="quick-item q-${id}" data-go="breathe/${id}">
         <span class="q-icon">${ICONS[id]}</span>
         <span class="q-name">${esc(t(`ex.${id}.name`))}</span>
       </button>`).join('')}
-  </div>`;
+  </div>
+  <div id="web-banners"></div>`;
 }
 
 async function hydrateHome() {
@@ -205,17 +239,30 @@ async function hydrateHome() {
       card.querySelector('[data-go]').onclick = () => go(r);
     }
   }
+  let saved = null;
+  try { saved = sessionStorage.getItem('dychaj.saved'); sessionStorage.removeItem('dychaj.saved'); } catch { /* ignore */ }
+  if (saved) {
+    const slot = document.getElementById('saved-slot');
+    if (slot) slot.innerHTML = `<div class="saved-banner">${ICONS.check}<span>${esc(saved)}</span></div>`;
+    card?.classList.add('flash');
+  }
   const banners = document.getElementById('banners');
   const perm = await notificationPermission().catch(() => 'unsupported');
   let html = '';
+  let webHtml = '';
   if (perm === 'prompt') {
     html += `<div class="banner"><p>${esc(t('home.permBanner'))}</p><button class="btn small" id="perm-btn">${esc(t('home.permBtn'))}</button></div>`;
   }
   if (!isNative() && /Android/i.test(navigator.userAgent)) {
-    html += `<div class="banner"><p>${esc(t('home.apkBanner'))}</p><a class="btn small" href="dychaj.apk" download>${ICONS.download} APK</a></div>`;
+    webHtml += `<div class="banner"><p>${esc(t('home.apkBanner'))}</p><a class="btn small" href="dychaj.apk" download>${ICONS.download} APK</a></div>`;
   }
   if (!isNative()) {
-    html += `<div class="banner soft"><p>${esc(t('home.webBanner'))}</p><button class="btn small ghost" data-go="plan">${esc(t('home.webBannerBtn'))}</button></div>`;
+    webHtml += `<div class="banner soft"><p>${esc(t('home.webBanner'))}</p><button class="btn small ghost" data-go="plan">${esc(t('home.webBannerBtn'))}</button></div>`;
+  }
+  const wb = document.getElementById('web-banners');
+  if (wb) {
+    wb.innerHTML = webHtml;
+    wb.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   }
   if (banners) {
     banners.innerHTML = html;
@@ -337,7 +384,9 @@ function renderSession(exId) {
         <div class="overlay done"><div class="sheet">
           <div class="done-mark">✓</div>
           <h2>${esc(t('session.doneTitle'))}</h2>
-          <p>${esc(t('session.doneBody'))}</p>
+          ${(() => { const d = dayStats(getState()); return isSpiro && d.spiroPlanned
+            ? `<p class="done-prog"><b>${d.spiroDone}/${d.spiroPlanned}</b> ${esc(t('home.spiroSets'))}</p>`
+            : `<p class="done-prog"><b>${d.breathDone}${d.breathPlanned ? '/' + d.breathPlanned : ''}</b> ${esc(t('home.breathSessions'))}</p>`; })()}
           <button class="btn primary big" data-action="home">${esc(t('nav.home'))}</button>
         </div></div>`);
       root.querySelector('[data-action="home"]').onclick = () => go('home');
@@ -488,19 +537,46 @@ function bindPlan() {
     update((s) => { s.breathReminders.push({ id: `b${Date.now().toString(36)}`, exercise: 'sigh', time: '18:00', enabled: true }); });
     render();
   };
-  document.getElementById('plan-save').onclick = async () => {
+  document.getElementById('plan-save').onclick = async (ev) => {
+    const btn = ev.currentTarget;
+    btn.disabled = true;
     readPlanForm();
+    const st = getState();
+    const perDay = computeSlots(st).length;
+    let ok = true;
+    let msg = '';
     if (isNative()) {
       let p = await notificationPermission();
       if (p !== 'granted') p = await requestNotificationPermission();
       if (p === 'granted') {
-        const { scheduled } = await syncNativeReminders(getState(), t);
-        toast(t('plan.nativeOk', { n: scheduled }));
-      } else toast(t('plan.permDenied'));
-    } else {
-      toast(t('plan.saved'));
+        const { scheduled } = await syncNativeReminders(st, t);
+        ok = scheduled === perDay;
+      } else {
+        ok = false;
+        msg = t('plan.permDenied');
+      }
     }
-    render();
+    if (!ok && msg) {
+      btn.disabled = false;
+      toast(msg);
+      return;
+    }
+    const n = nextSlot(st);
+    const nextTxt = n ? t('plan.savedNext', { time: `${String(n.hour).padStart(2, '0')}:${String(n.minute).padStart(2, '0')}` }) : '';
+    const summary = [t('plan.saved'), nextTxt].filter(Boolean).join(' · ');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="overlay center saved-overlay"><div class="saved-pop">
+        <div class="check-anim">${ICONS.check}</div>
+        <h2>${esc(t('plan.saved'))}</h2>
+        ${nextTxt ? `<p>${esc(nextTxt)}</p>` : ''}
+        <p class="muted">${esc(t('plan.perDay', { n: perDay }))}</p>
+      </div></div>`);
+    try { sessionStorage.setItem('dychaj.saved', summary); } catch { /* ignore */ }
+    tap('medium');
+    setTimeout(() => {
+      document.querySelector('.saved-overlay')?.remove();
+      go('home');
+    }, 1500);
   };
   document.getElementById('ics-btn')?.addEventListener('click', () => {
     readPlanForm();

@@ -19,7 +19,8 @@ The iOS app needs an Apple developer account to install on a phone; CI only comp
 - Spirometer set: prep, slow inhale, hold, slow exhale, rest. Animated Triflo with 600/900/1200 ml/s chambers, target 1 to 3 balls, log how many balls rose.
 - Exercises with adjustable timings; every phase is cued by vibration, a breath sound and an optional chime.
 - Reminders: spirometer every N minutes between two times, plus any number of exercise reminders per day.
-- Today overview, progress toward the planned sets, day streak.
+- Progress: daily rings (spirometer sets, breathing), 7-day bars, streak, total breaths. Save gives a visible confirmation.
+- Screen stays on during sessions (native window flag / iOS idle timer, Screen Wake Lock on the web).
 - Works offline, data stays on the device (localStorage).
 
 ## Development

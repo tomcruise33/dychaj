@@ -103,7 +103,9 @@ export async function syncNativeReminders(state, t) {
     extra: { route: s.type === 'spirometer' ? 'spirometer' : `breathe/${s.exercise}` },
   }));
   if (notifications.length) await LocalNotifications.schedule({ notifications });
-  return { scheduled: notifications.length };
+  // Report what the OS actually holds, not what we asked for.
+  const after = await LocalNotifications.getPending();
+  return { scheduled: after.notifications.length };
 }
 
 export function onNotificationTap(cb) {

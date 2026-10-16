@@ -5,6 +5,7 @@ import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.view.WindowManager;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -154,6 +155,22 @@ public class LungHapticsPlugin extends Plugin {
             vibrator.vibrate("heavy".equals(strength) ? 60 : 30);
         }
         call.resolve();
+    }
+
+    @PluginMethod
+    public void keepAwake(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void allowSleep(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            call.resolve();
+        });
     }
 
     @PluginMethod

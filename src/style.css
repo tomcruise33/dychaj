@@ -340,3 +340,50 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .page { max-width: 640px; }
   .quick-item { padding: 20px 10px; }
 }
+
+/* ---------- progress card ---------- */
+.progress-card { padding: 18px 16px 14px; }
+.rings { display: flex; align-items: center; justify-content: space-around; }
+.ring-box { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.ring { display: block; }
+.ring-bg { fill: none; stroke: var(--bg-2); stroke-width: 12; }
+.ring-fg { fill: none; stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(.2,.8,.2,1); }
+.ring.spiro .ring-fg { stroke: var(--accent); }
+.ring.breath .ring-fg { stroke: var(--teal); }
+.ring.breath .ring-bg, .ring.breath .ring-fg { stroke-width: 9; }
+.ring-label { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.05; }
+.ring-label b { font-size: 2.1rem; font-weight: 800; }
+.ring-box.small .ring-label b { font-size: 1.25rem; }
+.ring-label span { font-size: 0.7rem; color: var(--muted); font-weight: 650; margin-top: 3px; max-width: 80px; }
+.ring-side { display: flex; flex-direction: column; align-items: center; }
+.side-cap { font-size: 0.75rem; color: var(--muted); font-weight: 650; margin-top: 6px; }
+.left-line { text-align: center; margin: 10px 0 4px; font-weight: 650; color: var(--ink); min-height: 1.2em; }
+.left-line strong { color: var(--teal); }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 10px; }
+.wk { display: flex; flex-direction: column; align-items: center; }
+.wk-bar { width: 14px; height: 48px; border-radius: 8px; background: var(--bg-2); position: relative; overflow: hidden; }
+.wk-bar i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); border-radius: 8px; opacity: 0.55; }
+.wk.full .wk-bar i { background: var(--teal); opacity: 1; }
+.wk.today .wk-bar i { opacity: 1; }
+.wk span { font-size: 0.7rem; color: var(--muted); margin-top: 5px; font-weight: 650; text-transform: uppercase; }
+.wk.today span { color: var(--accent); }
+.totals { display: flex; justify-content: center; flex-wrap: wrap; margin-top: 12px; font-size: 0.8rem; color: var(--muted); }
+.totals span { margin: 2px 8px; }
+.totals b { color: var(--ink); font-size: 0.95rem; }
+
+/* ---------- save feedback ---------- */
+.saved-banner { display: flex; align-items: center; background: var(--teal); color: var(--bg); border-radius: 16px; padding: 12px 14px; font-weight: 700; animation: down 0.35s; }
+.saved-banner .ico { width: 22px; height: 22px; margin-right: 10px; stroke-width: 2.6; }
+.next.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 var(--teal); } 30% { box-shadow: 0 0 0 6px var(--teal-soft); } 100% { box-shadow: var(--shadow); } }
+.overlay.center { align-items: center; }
+.saved-pop { background: var(--card); border-radius: 28px; padding: 28px 32px; text-align: center; min-width: 240px; animation: pop 0.35s cubic-bezier(.2,1.4,.4,1); }
+.saved-pop h2 { margin-top: 12px; }
+.saved-pop p { margin: 6px 0 0; }
+.check-anim { width: 78px; height: 78px; border-radius: 50%; margin: 0 auto; background: var(--teal); color: var(--bg); display: flex; align-items: center; justify-content: center; }
+.check-anim .ico { width: 44px; height: 44px; stroke-width: 2.6; stroke-dasharray: 30; stroke-dashoffset: 30; animation: draw 0.45s 0.15s ease-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pop { from { transform: scale(0.8); opacity: 0; } }
+.done-prog { font-size: 1.05rem; }
+.done-prog b { font-size: 1.5rem; color: var(--accent); }
+.btn:disabled { opacity: 0.6; }

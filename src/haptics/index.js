@@ -78,3 +78,34 @@ export async function stopHaptics() {
 export function hapticsMode() {
   return mode;
 }
+
+// Keep the screen on during a session. Native: window flag / idle timer via
+// the LungHaptics plugin. Web: Screen Wake Lock, re-acquired when the page
+// becomes visible again (the browser drops it on every tab switch).
+let wakeLock = null;
+let wantAwake = false;
+async function requestWebLock() {
+  try {
+    if (navigator.wakeLock && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch { /* not allowed or unsupported */ }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (wantAwake && document.visibilityState === 'visible') requestWebLock();
+  });
+}
+
+export async function keepScreenOn(on) {
+  wantAwake = on;
+  if (Capacitor.isNativePlatform()) {
+    try { await (on ? LungHaptics.keepAwake() : LungHaptics.allowSleep()); } catch (e) { console.warn('keepAwake failed', e); }
+    return;
+  }
+  if (on) await requestWebLock();
+  else {
+    try { await wakeLock?.release(); } catch { /* ignore */ }
+    wakeLock = null;
+  }
+}

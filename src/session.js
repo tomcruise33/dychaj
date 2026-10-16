@@ -1,6 +1,6 @@
 // Session runner: walks through a phase list, drives haptics, sound and
 // a "fill" value (0 = empty lungs, 1 = full) for the animation.
-import { playPhase, tap, stopHaptics } from './haptics/index.js';
+import { playPhase, tap, stopHaptics, keepScreenOn } from './haptics/index.js';
 import { unlockAudio, playBreathSound, chime, stopAudio } from './audio.js';
 
 const FILL = {
@@ -30,12 +30,11 @@ export class Session {
     this.startedAt = 0;
     this.totalMs = phases.reduce((s, p) => s + p.ms, 0);
     this.doneMs = 0;
-    this.wakeLock = null;
   }
 
   async start() {
     unlockAudio();
-    try { this.wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* not available */ }
+    keepScreenOn(true);
     this.next();
     this.loop();
   }
@@ -115,7 +114,7 @@ export class Session {
     cancelAnimationFrame(this.raf);
     stopHaptics();
     stopAudio();
-    try { this.wakeLock?.release(); } catch { /* ignore */ }
+    keepScreenOn(false);
   }
 
   finish() {

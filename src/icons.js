@@ -13,5 +13,6 @@ export const ICONS = {
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
   minus: svg('<path d="M5 12h14"/>'),
   calendar: svg('<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/><circle cx="12" cy="15" r="1.3" class="fill"/>'),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   download: svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'),
 };

@@ -39,3 +39,9 @@ Envelope sampled every 40 ms (`src/haptics/envelope.js`):
 - **Exhale**: amplitude drains 0.77 → 0.05 with ease-out, ripple fades.
 - **Hold (empty)**: near silence, faint pulse each second.
 - Every phase starts with a short crisp tap so phase changes are felt with eyes closed.
+
+## 5. Daily plan and airway clearing (added 2026-10-16)
+
+- **Clear & cough** exercise follows the [Guy's and St Thomas' NHS physiotherapy leaflet](https://guysandstthomas.nhs.uk/health-information/physiotherapy-heart-surgery): sit upright, breathe in through the nose, hold 1 to 2 s while sniffing in a little more, breathe out through the mouth, 3 to 5 times, then a huff (medium breath, force air out of an open mouth "like steaming up a window") and a cough with a pillow held to the chest. Stop if dizzy. The app does not mention surgery.
+- **Default daily plan** (user's instruction): spirometer 5 breaths every 15 minutes, 08:00 to 21:45 (56 per day). Clear & cough at 08:00, 11:00, 15:00, 19:00; cardiac coherence at 09:00, 13:00, 20:30 (3x a day per the 365 method); stress relief at 17:00 and 21:30. All on quarter hours so they merge into the spirometer reminder (one notification, under the iOS 64 limit).
+- Preoperative inspiratory muscle training reduced pulmonary complications (18.0% vs 35.0%) and pneumonia (6.5% vs 16.1%) in high-risk patients in [Hulzebos et al., JAMA 2006](https://pubmed.ncbi.nlm.nih.gov/17047215/); that trial used a dedicated device and a longer programme, so it is background only, not a feature of this app.

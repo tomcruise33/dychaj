@@ -209,6 +209,9 @@ async function hydrateHome() {
   if (perm === 'prompt') {
     html += `<div class="banner"><p>${esc(t('home.permBanner'))}</p><button class="btn small" id="perm-btn">${esc(t('home.permBtn'))}</button></div>`;
   }
+  if (!isNative() && /Android/i.test(navigator.userAgent)) {
+    html += `<div class="banner"><p>${esc(t('home.apkBanner'))}</p><a class="btn small" href="dychaj.apk" download>⬇ APK</a></div>`;
+  }
   if (!isNative()) {
     html += `<div class="banner soft"><p>${esc(t('home.webBanner'))}</p><button class="btn small ghost" data-go="plan">${esc(t('home.webBannerBtn'))}</button></div>`;
   }
@@ -570,7 +573,7 @@ function viewSettings(st) {
     <h3>${esc(t('set.install'))}</h3>
     <p>${esc(t('set.installIos'))}</p>
     <p>${esc(t('set.installAndroid'))}</p>
-    <p><a href="https://github.com/tomcruise33/dychaj/releases/latest" target="_blank" rel="noopener">github.com/tomcruise33/dychaj/releases</a></p>
+    ${!isNative() ? `<a class="btn primary" href="dychaj.apk" download>⬇ Android APK</a>` : ''}
   </section>
   <section class="card soft">
     <p>${esc(t('set.disclaimer'))}</p>

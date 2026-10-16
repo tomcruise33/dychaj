@@ -8,8 +8,8 @@ Languages: Slovak, Turkish, English (auto-detected, switchable).
 
 | Platform | How | Notifications | Lung vibration |
 |---|---|---|---|
-| Android app | Download `dychaj.apk` from [Releases → latest](https://github.com/tomcruise33/dychaj/releases/latest), open it, allow install | Yes, scheduled on the phone, works when closed | Full (amplitude waveform) |
-| Web / PWA | Open the Vercel URL, "Add to Home Screen" | Only while open, plus calendar export (.ics) | Android browsers: simplified (PWM). iPhone: none (Apple blocks it), sound + animation instead |
+| Android app | Download [dychaj.apk](https://tomcruise33.github.io/dychaj/dychaj.apk) (also in [Releases](https://github.com/tomcruise33/dychaj/releases/latest)), open it, allow install | Yes, scheduled on the phone, works when closed | Full (amplitude waveform) |
+| Web / PWA | Open https://tomcruise33.github.io/dychaj/, "Add to Home Screen" | Only while open, plus calendar export (.ics) | Android browsers: simplified (PWM). iPhone: none (Apple blocks it), sound + animation instead |
 | iOS app | Open `ios/App/App.xcodeproj` in Xcode on a Mac, pick your team, Run | Yes | Full (Core Haptics) |
 
 The iOS app needs an Apple developer account to install on a phone; CI only compiles it.

@@ -6,6 +6,7 @@ import { EXERCISES, buildSession, TRIFLO_BALLS } from './exercises.js';
 import { Session } from './session.js';
 import { detectHaptics, playPhase, hapticsMode } from './haptics/index.js';
 import { unlockAudio, playBreathSound } from './audio.js';
+import { ICONS } from './icons.js';
 import { lungsSvg, trifloSvg, setLungs, setTriflo } from './visuals.js';
 import {
   computeSlots, nextSlot, isNative, notificationPermission, requestNotificationPermission,
@@ -177,7 +178,7 @@ function viewHome(st) {
   <div class="quick">
     ${quick.map((id) => `
       <button class="quick-item q-${id}" data-go="breathe/${id}">
-        <span class="q-icon">${EXERCISES[id].icon}</span>
+        <span class="q-icon">${ICONS[id]}</span>
         <span class="q-name">${esc(t(`ex.${id}.name`))}</span>
       </button>`).join('')}
   </div>`;
@@ -200,7 +201,7 @@ async function hydrateHome() {
           <h2>${String(n.hour).padStart(2, '0')}:${String(n.minute).padStart(2, '0')} <small>${esc(rel)}</small></h2>
           <p>${esc(name)}</p>
         </div>
-        <button class="btn round" data-go="${r}" aria-label="${esc(t('session.start'))}">▶</button>`;
+        <button class="btn round" data-go="${r}" aria-label="${esc(t('session.start'))}">${ICONS.play}</button>`;
       card.querySelector('[data-go]').onclick = () => go(r);
     }
   }
@@ -211,7 +212,7 @@ async function hydrateHome() {
     html += `<div class="banner"><p>${esc(t('home.permBanner'))}</p><button class="btn small" id="perm-btn">${esc(t('home.permBtn'))}</button></div>`;
   }
   if (!isNative() && /Android/i.test(navigator.userAgent)) {
-    html += `<div class="banner"><p>${esc(t('home.apkBanner'))}</p><a class="btn small" href="dychaj.apk" download>⬇ APK</a></div>`;
+    html += `<div class="banner"><p>${esc(t('home.apkBanner'))}</p><a class="btn small" href="dychaj.apk" download>${ICONS.download} APK</a></div>`;
   }
   if (!isNative()) {
     html += `<div class="banner soft"><p>${esc(t('home.webBanner'))}</p><button class="btn small ghost" data-go="plan">${esc(t('home.webBannerBtn'))}</button></div>`;
@@ -244,7 +245,7 @@ function viewBreathe() {
             : `${o.inSec}+${o.topSec}/${o.outSec} s · ${t('session.minutes', { n: o.minutes })}`;
       return `
       <button class="ex-card ex-${id}" data-go="${r}">
-        <span class="ex-icon">${EXERCISES[id].icon}</span>
+        <span class="ex-icon">${ICONS[id]}</span>
         <span class="ex-text">
           <strong>${esc(t(`ex.${id}.name`))}</strong>
           <span>${esc(t(`ex.${id}.desc`))}</span>
@@ -428,18 +429,18 @@ function viewPlan(st) {
       <div class="rem-row" data-id="${b.id}">
         <input type="checkbox" class="rem-on" ${b.enabled ? 'checked' : ''} aria-label="on">
         <select class="rem-ex">${['coherence', 'box', 'sigh'].map((e) =>
-          `<option value="${e}" ${e === b.exercise ? 'selected' : ''}>${esc(t(`ex.${e}.name`))}</option>`).join('')}</select>
+          `<option value="${e}" ${e === b.exercise ? 'selected' : ''}>${esc(t(`ex.${e}.short`))}</option>`).join('')}</select>
         <select class="rem-time" aria-label="time">${timeOpts(b.time, 15)}</select>
-        <button class="btn ghost icon rem-del" aria-label="${esc(t('plan.remove'))}">✕</button>
+        <button class="btn ghost icon rem-del" aria-label="${esc(t('plan.remove'))}">${ICONS.close}</button>
       </div>`).join('')}
     </div>
-    <button class="btn ghost" id="rem-add">＋ ${esc(t('plan.add'))}</button>
+    <button class="btn ghost with-ico" id="rem-add">${ICONS.plus} ${esc(t('plan.add'))}</button>
   </section>
   <button class="btn primary big" id="plan-save">${esc(t('plan.save'))}</button>
   ${!isNative() ? `
   <section class="card soft">
     <p>${esc(t('plan.webNote'))}</p>
-    <button class="btn" id="ics-btn">📅 ${esc(t('plan.exportIcs'))}</button>
+    <button class="btn with-ico" id="ics-btn">${ICONS.calendar} ${esc(t('plan.exportIcs'))}</button>
     <p class="fine">${esc(t('plan.exportIcsDesc'))}</p>
   </section>` : ''}`;
 }
@@ -517,9 +518,9 @@ function bindPlan() {
 // ---------- settings ----------
 function num(id, label, val, min, max, step = 1) {
   return `<label class="num"><span>${esc(label)}</span>
-    <span class="stepper"><button class="btn icon ghost" data-step="-${step}" data-for="${id}">−</button>
+    <span class="stepper"><button class="btn icon ghost" data-step="-${step}" data-for="${id}" aria-label="-">${ICONS.minus}</button>
     <input id="${id}" type="number" inputmode="decimal" value="${val}" min="${min}" max="${max}" step="${step}">
-    <button class="btn icon ghost" data-step="${step}" data-for="${id}">＋</button></span></label>`;
+    <button class="btn icon ghost" data-step="${step}" data-for="${id}" aria-label="+">${ICONS.plus}</button></span></label>`;
 }
 
 function viewSettings(st) {
@@ -574,7 +575,7 @@ function viewSettings(st) {
     <h3>${esc(t('set.install'))}</h3>
     <p>${esc(t('set.installIos'))}</p>
     <p>${esc(t('set.installAndroid'))}</p>
-    ${!isNative() ? `<a class="btn primary" href="dychaj.apk" download>⬇ Android APK</a>` : ''}
+    ${!isNative() ? `<a class="btn primary" href="dychaj.apk" download>${ICONS.download} Android APK</a>` : ''}
   </section>
   <section class="card soft">
     <p>${esc(t('set.disclaimer'))}</p>

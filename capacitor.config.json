@@ -1,0 +1,12 @@
+{
+  "appId": "sk.tomaskrizan.dychaj",
+  "appName": "Dýchaj",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_lungs",
+      "iconColor": "#E8664A"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dýchaj</string>
+    <string name="title_activity_main">Dýchaj</string>
+    <string name="package_name">sk.tomaskrizan.dychaj</string>
+    <string name="custom_url_scheme">sk.tomaskrizan.dychaj</string>
+</resources>
